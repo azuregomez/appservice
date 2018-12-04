@@ -103,7 +103,7 @@
         },
         "repoURL": {
             "type": "string",
-            "defaultValue": "https://github.com/azuregomez/appservice/appcode",
+            "defaultValue":"https://github.com/azuregomez/helloworld",
             "metadata": {
               "description": "The repo where code lives."
             }
