@@ -1,5 +1,5 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
         "aseName": {
@@ -30,7 +30,7 @@
         },
         "aseSubnetPrefix": {
             "type": "string",
-            "defaultValue": "10.1.0.0/24",
+            "defaultValue": "10.0.1.0/24",
             "metadata": {
               "description": "VNet Address prefix"
             }
@@ -44,7 +44,7 @@
         },
         "dmzSubnetPrefix": {
             "type": "string",
-            "defaultValue": "10.2.0.0/24",
+            "defaultValue": "10.0.2.0/24",
             "metadata": {
               "description": "VNet Address prefix"
             }
@@ -135,6 +135,44 @@
     },
     "resources": [
     {
+        "comments": "NSG for RDP",
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "name": "AllowRDP-NSG",
+        "location": "[resourceGroup().location]",  
+        "properties": {
+            "securityRules": [
+            {
+                "name": "AllowRDP-Inbound",
+                "properties": {
+                    "description": "Rule",
+                    "protocol": "Tcp",
+                    "sourcePortRange": "*",
+                    "destinationPortRange": "3389",
+                    "sourceAddressPrefix": "*",
+                    "destinationAddressPrefix": "*",
+                    "access": "Allow",
+                    "priority": 100,
+                    "direction": "Inbound"
+                }
+            },          
+            {
+                "name": "Default-Deny",
+                "properties": {
+                    "description": "Default-Deny if we don't match Allow rule",
+                    "protocol": "*",
+                    "sourcePortRange": "*",
+                    "destinationPortRange": "*",
+                    "sourceAddressPrefix": "*",
+                    "destinationAddressPrefix": "*",
+                    "access": "Deny",
+                    "priority": 200,
+                    "direction": "Inbound"
+                }
+            }]
+        }
+    },
+    {
         "comments": "VNet and Subnets",
         "apiVersion": "2015-06-15",
         "type": "Microsoft.Network/virtualNetworks",
@@ -157,10 +195,13 @@
                 "name": "[parameters('dmzSubnetName')]",
                 "properties": {
                   "addressPrefix": "[parameters('dmzSubnetPrefix')]"            
+                },
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'AllowRDP-NSG')]"
                 }
             }
         ]    
-    }        
+      }        
     },      
     {
         "comments": "ILB ASE v2",
@@ -253,45 +294,7 @@
         "properties": {
         "publicIPAllocationMethod": "Dynamic"          
         }
-    },
-    {
-        "comments": "NSG for RDP",
-        "apiVersion": "2015-06-15",
-        "type": "Microsoft.Network/networkSecurityGroups",
-        "name": "AllowRDP-Subnet",
-        "location": "[resourceGroup().location]",  
-        "properties": {
-            "securityRules": [
-            {
-                "name": "AllowRDP-Inbound",
-                "properties": {
-                    "description": "Rule",
-                    "protocol": "Tcp",
-                    "sourcePortRange": "*",
-                    "destinationPortRange": "3389",
-                    "sourceAddressPrefix": "*",
-                    "destinationAddressPrefix": "*",
-                    "access": "Allow",
-                    "priority": 100,
-                    "direction": "Inbound"
-                }
-            },          
-            {
-                "name": "Default-Deny",
-                "properties": {
-                    "description": "Default-Deny if we don't match Allow rule",
-                    "protocol": "*",
-                    "sourcePortRange": "*",
-                    "destinationPortRange": "*",
-                    "sourceAddressPrefix": "*",
-                    "destinationAddressPrefix": "*",
-                    "access": "Deny",
-                    "priority": 200,
-                    "direction": "Inbound"
-                }
-            }]
-        }
-    },
+    },   
     {
         "comments": "NIC for bastionVM",
         "apiVersion": "2016-03-30",
@@ -300,7 +303,7 @@
         "location": "[resourceGroup().location]",  
         "dependsOn": [
           "[resourceId('Microsoft.Network/publicIPAddresses/', variables('bastionVIPName'))]",
-          "[resourceId('Microsoft.Network/virtualNetworks/subnets/', parameters('vnetName'), parameters('dmzSubnetName'))]"
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
         ],
         "properties": {
           "ipConfigurations": [

@@ -1,8 +1,8 @@
 $rgname = "ASE01-RG"
 $location = "North Central US"
 #$templateuri = "https://raw.githubusercontent.com/azuregomez/pan-g-hub/master/azuredeploy.json"
-$templatefile = "C:\projects\github\ase\azuredeploy.json"
-$templateparamfile = "C:\projects\github\ase\azuredeploy.parameters.json"
+$templatefile = "C:\projects\github\appservice\azuredeploy.json"
+$templateparamfile = "C:\projects\github\appservice\azuredeploy.parameters.json"
 $rg = get-azurermresourcegroup -location $location -name $rgname
 if ($null -eq $rg)
 {
