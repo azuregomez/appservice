@@ -1,0 +1,368 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "aseName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the App Service Environment"
+            }
+        },       
+        "vnetName": {
+            "type": "string",
+            "metadata": {
+              "description": "Name of VNET"
+            }
+        },       
+        "vnetAddressPrefix": {
+            "type": "string",
+            "defaultValue": "10.0.0.0/16",
+            "metadata": {
+              "description": "VNet Address prefix"
+            }
+        },
+        "aseSubnetName": {
+            "type": "string",
+            "defaultValue": "AseSubnet",
+            "metadata": {
+                "description": "Subnet name that will contain the App Service Environment"
+            }
+        },
+        "aseSubnetPrefix": {
+            "type": "string",
+            "defaultValue": "10.1.0.0/24",
+            "metadata": {
+              "description": "VNet Address prefix"
+            }
+        },
+        "dmzSubnetName": {
+            "type": "string",
+            "defaultValue": "DmzSubnet",
+            "metadata": {
+                "description": "Subnet name that will contain the App Service Environment"
+            }
+        },
+        "dmzSubnetPrefix": {
+            "type": "string",
+            "defaultValue": "10.2.0.0/24",
+            "metadata": {
+              "description": "VNet Address prefix"
+            }
+        },
+        "internalLoadBalancingMode": {
+            "type": "int",
+            "defaultValue": 3,
+            "allowedValues": [0,1,2,3],
+            "metadata": {
+                "description": "0 = public VIP only, 1 = only ports 80/443 are mapped to ILB VIP, 2 = only FTP ports are mapped to ILB VIP, 3 = both ports 80/443 and FTP ports are mapped to an ILB VIP."
+            }
+        },
+        "dnsSuffix": {
+            "type": "string",
+            "metadata": {
+                "description": "Used *only* when deploying an ILB enabled ASE.  Set this to the root domain associated with the ASE.  For example: contoso.com"
+            }
+        },
+        "appServicePlanName": {
+            "type": "string",
+            "defaultValue": "ASP01",
+            "metadata": {
+              "description": "The name of the App Service plan to use for hosting the web app."
+            }
+        },
+        "appServicePlanSKU": {
+            "type": "string",
+            "allowedValues": [
+              "I1",
+              "I2",
+              "I3"
+            ],
+            "defaultValue": "I1",
+            "metadata": {
+              "description": "Defines size of nodes."
+            }
+        },
+        "appServicePlanCapacity": {
+            "type": "int",
+            "defaultValue": 1,
+            "metadata": {
+              "description": "Capacity."
+            }
+        },
+        "webAppName": {
+            "type": "string",
+            "metadata": {
+              "description": "The name of the web app that will be created."
+            }
+        },
+        "repoURL": {
+            "type": "string",
+            "defaultValue": "https://github.com/azuregomez/appservice/appcode",
+            "metadata": {
+              "description": "The repo where code lives."
+            }
+        },
+        "repoBranch": {
+            "type": "string",
+            "defaultValue": "master",
+            "metadata": {
+              "description": "Repo branch."
+            }
+        },
+        "bastionVmName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the bastion Virtual Machine."
+            }
+        },
+        "bastionVmUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Username for the Virtual Machine."
+            }
+        },
+        "bastionVmPassword": {
+            "type": "securestring",
+            "metadata": {
+            "description": "Password for the Virtual Machine."
+            }
+        }
+    },
+    "variables":{
+        "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+        "bastionVIPName": "[concat(parameters('bastionVmName'),'-VIP')]",
+        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]"
+    },
+    "resources": [
+    {
+        "comments": "VNet and Subnets",
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[parameters('vnetName')]",
+        "location": "[resourcegroup().location]",
+        "properties": {
+            "addressSpace": {
+            "addressPrefixes": [
+              "[parameters('vnetAddressPrefix')]"
+            ]
+          },
+        "subnets": [
+            {
+              "name": "[parameters('aseSubnetName')]",
+              "properties": {
+                "addressPrefix": "[parameters('aseSubnetPrefix')]"          
+              }
+            },
+            {
+                "name": "[parameters('dmzSubnetName')]",
+                "properties": {
+                  "addressPrefix": "[parameters('dmzSubnetPrefix')]"            
+                }
+            }
+        ]    
+    }        
+    },      
+    {
+        "comments": "ILB ASE v2",
+        "apiVersion": "2015-08-01",
+        "type": "Microsoft.Web/hostingEnvironments",
+        "name": "[parameters('aseName')]",
+        "kind": "ASEV2",
+        "location": "[resourcegroup().location]",
+        "dependsOn": [
+            "[concat('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"            
+        ],
+        "properties": {
+          "name": "[parameters('aseName')]",
+          "location": "[resourcegroup().location]",
+          "ipSslAddressCount": 0,
+          "internalLoadBalancingMode": "[parameters('internalLoadBalancingMode')]",
+          "dnsSuffix" : "[parameters('dnsSuffix')]",
+          "virtualNetwork": {
+            "Id": "[variables('vnetID')]",
+            "Subnet": "[parameters('aseSubnetName')]"
+          }
+        }
+      },
+      {
+        "comments": "App Service Plan",
+        "apiVersion": "2016-09-01",
+        "name": "[parameters('appServicePlanName')]",
+        "type": "Microsoft.Web/serverfarms",
+        "location": "[resourcegroup().location]",
+        "tags": {
+          "displayName": "ASE Hosting Plan",
+          "usage": "Hosting Plan within ASE",
+          "category": "Hosting"          
+        },
+        "dependsOn": [
+          "[concat('Microsoft.Web/hostingEnvironments/',parameters('aseName'))]"
+        ],
+        "properties": {
+          "name": "[parameters('appServicePlanName')]",
+          "hostingEnvironmentProfile": {
+            "id": "[resourceId('Microsoft.Web/hostingEnvironments/',parameters('aseName'))]"
+          }
+        },
+        "sku": {
+          "name": "[concat(parameters('appServicePlanSKU'))]",
+          "tier": "Isolated",
+          "size": "[concat(parameters('appServicePlanSKU'))]",
+          "family": "I",
+          "capacity": "[parameters('appServicePlanCapacity')]"
+        }
+      },
+      {
+        "comments": "Web App",
+        "apiVersion": "2016-08-01",       
+        "type": "Microsoft.Web/sites",
+        "name": "[parameters('webAppName')]",
+        "location": "[resourceGroup().location]",       
+        "dependsOn": [
+          "[concat('Microsoft.Web/serverFarms/',parameters('appServicePlanName'))]"
+        ],
+        "properties": {
+          "name": "[parameters('webAppName')]",
+          "serverFarmId": "[resourceId('Microsoft.Web/serverFarms',parameters('appServicePlanName'))]",
+          "hostingEnvironmentProfile": {
+            "id": "[resourceId('Microsoft.Web/hostingEnvironments/', parameters('aseName'))]"
+          }
+        },
+        "resources": [
+            {
+              "apiVersion": "2015-08-01",
+              "name": "web",
+              "type": "sourcecontrols",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('webAppName'))]"
+              ],
+              "properties": {
+                "RepoUrl": "[parameters('repoURL')]",
+                "branch": "[parameters('repoBranch')]",
+                "IsManualIntegration": true
+              }
+            }
+          ]
+      },
+    {
+        "comments": "Bastion VM Public IP",
+        "apiVersion": "2016-03-30",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[variables('bastionVIPName')]",
+        "location": "[resourceGroup().location]",  
+        "properties": {
+        "publicIPAllocationMethod": "Dynamic"          
+        }
+    },
+    {
+        "comments": "NSG for RDP",
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "name": "AllowRDP-Subnet",
+        "location": "[resourceGroup().location]",  
+        "properties": {
+            "securityRules": [
+            {
+                "name": "AllowRDP-Inbound",
+                "properties": {
+                    "description": "Rule",
+                    "protocol": "Tcp",
+                    "sourcePortRange": "*",
+                    "destinationPortRange": "3389",
+                    "sourceAddressPrefix": "*",
+                    "destinationAddressPrefix": "*",
+                    "access": "Allow",
+                    "priority": 100,
+                    "direction": "Inbound"
+                }
+            },          
+            {
+                "name": "Default-Deny",
+                "properties": {
+                    "description": "Default-Deny if we don't match Allow rule",
+                    "protocol": "*",
+                    "sourcePortRange": "*",
+                    "destinationPortRange": "*",
+                    "sourceAddressPrefix": "*",
+                    "destinationAddressPrefix": "*",
+                    "access": "Deny",
+                    "priority": 200,
+                    "direction": "Inbound"
+                }
+            }]
+        }
+    },
+    {
+        "comments": "NIC for bastionVM",
+        "apiVersion": "2016-03-30",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[variables('bastionNicName')]",
+        "location": "[resourceGroup().location]",  
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/publicIPAddresses/', variables('bastionVIPName'))]",
+          "[resourceId('Microsoft.Network/virtualNetworks/subnets/', parameters('vnetName'), parameters('dmzSubnetName'))]"
+        ],
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('bastionVIPName'))]"
+                },
+                "subnet": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets/', parameters('vnetName'), parameters('dmzSubnetName'))]"
+                }
+              }
+            }
+          ]
+        }
+    },
+    {
+        "comments": "Bastion VM",
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[parameters('bastionVmName')]",
+        "location": "[resourceGroup().location]",  
+        "dependsOn": [          
+          "[resourceId('Microsoft.Network/networkInterfaces/', variables('bastionNicName'))]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "Standard_A2"
+          },
+          "osProfile": {
+            "computerName": "[parameters('bastionVmName')]",
+            "adminUsername": "[parameters('bastionVMUsername')]",
+            "adminPassword": "[parameters('bastionVMPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "2016-Datacenter",
+              "version": "latest"
+            },
+            "osDisk": {
+              "createOption": "FromImage"
+            },
+            "dataDisks": [
+              {
+                "diskSizeGB": 1023,
+                "lun": 0,
+                "createOption": "Empty"
+              }
+            ]
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('bastionNicName'))]"
+              }
+            ]
+          }
+        }
+      }
+    ]
+}
