@@ -63,6 +63,12 @@
                 "description": "Used *only* when deploying an ILB enabled ASE.  Set this to the root domain associated with the ASE.  For example: contoso.com"
             }
         },
+        "aseLocation": {
+          "type": "string",
+          "metadata": {
+              "description": "ASE location. Anoying bug does not allow [resourcegroup().location]"
+          }
+        },
         "appServicePlanName": {
             "type": "string",
             "defaultValue": "ASP01",
@@ -131,7 +137,7 @@
     "variables":{
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
         "bastionVIPName": "[concat(parameters('bastionVmName'),'-VIP')]",
-        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]"
+        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]"        
     },
     "resources": [
     {
@@ -205,17 +211,17 @@
     },      
     {
         "comments": "ILB ASE v2",
-        "apiVersion": "2015-08-01",
+        "apiVersion": "2018-08-01",
         "type": "Microsoft.Web/hostingEnvironments",
         "name": "[parameters('aseName')]",
         "kind": "ASEV2",
-        "location": "[resourcegroup().location]",
+        "location": "[parameters('aseLocation')]",
         "dependsOn": [
             "[concat('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"            
         ],
         "properties": {
           "name": "[parameters('aseName')]",
-          "location": "[resourcegroup().location]",
+          "location": "[parameters('aseLocation')]",
           "ipSslAddressCount": 0,
           "internalLoadBalancingMode": "[parameters('internalLoadBalancingMode')]",
           "dnsSuffix" : "[parameters('dnsSuffix')]",
@@ -230,7 +236,7 @@
         "apiVersion": "2016-09-01",
         "name": "[parameters('appServicePlanName')]",
         "type": "Microsoft.Web/serverfarms",
-        "location": "[resourcegroup().location]",
+        "location": "[parameters('aseLocation')]",
         "tags": {
           "displayName": "ASE Hosting Plan",
           "usage": "Hosting Plan within ASE",

@@ -11,6 +11,9 @@
         "dnsSuffix": {
             "value": "lakeview.cloud"
         },
+        "aseLocation":{
+            "value": "North Central US"
+        },
         "webAppName": {
             "value": "app01"
         },
