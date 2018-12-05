@@ -25,6 +25,9 @@
         },
         "bastionVmPassword":{
             "value": "p@ssw0rd1!"
+        },
+        "appgwyName":{
+            "value": "LakeviewAppGateway"
         }
     }
 }

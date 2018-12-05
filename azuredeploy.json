@@ -32,21 +32,35 @@
             "type": "string",
             "defaultValue": "10.0.1.0/24",
             "metadata": {
-              "description": "VNet Address prefix"
+              "description": "ASE Subnet Address prefix"
             }
         },
         "dmzSubnetName": {
             "type": "string",
             "defaultValue": "DmzSubnet",
             "metadata": {
-                "description": "Subnet name that will contain the App Service Environment"
+                "description": "Subnet name that will contain the RDP bastion VM"
             }
         },
         "dmzSubnetPrefix": {
             "type": "string",
             "defaultValue": "10.0.2.0/24",
             "metadata": {
-              "description": "VNet Address prefix"
+              "description": "DMZ subnet Address prefix"
+            }
+        },
+        "wafSubnetName": {
+          "type": "string",
+          "defaultValue": "WafSubnet",
+          "metadata": {
+              "description": "Subnet name that will contain App Gateway"
+          }
+        },
+        "wafSubnetPrefix": {
+            "type": "string",
+            "defaultValue": "10.0.3.0/24",
+            "metadata": {
+              "description": "WAF subnet Address prefix"
             }
         },
         "internalLoadBalancingMode": {
@@ -132,12 +146,35 @@
             "metadata": {
             "description": "Password for the Virtual Machine."
             }
+        },
+        "appgwyName":{
+          "type": "string",
+          "metadata": {
+              "description": "App Gateway Name."
+          }
         }
     },
     "variables":{
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
         "bastionVIPName": "[concat(parameters('bastionVmName'),'-VIP')]",
-        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]"        
+        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]",
+        "wafPublicIPName": "[concat(parameters('appgwyName'),'-VIP')]",
+        "wafSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('wafSubnetName'))]",
+        "wafPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('wafPublicIPName'))]",
+        "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',parameters('appgwyName'))]",
+        "_CONSTANT_ASE_IP_SHIFT": 11,
+        "aseSubnetPrefixSplit": "[split(parameters('aseSubnetPrefix'),'/')]",        
+        "WebAppSubnetPrefix": "[variables('aseSubnetPrefixSplit')[0]]",
+        "WAFBackEndPoolSplit": "[split(variables('WebAppSubnetPrefix'),'.')]",
+        "WAFBackEndPoolConvert": "[int(variables('WAFBackEndPoolSplit')[3])]",
+        "WAFBackEndPoolAdd": "[add(variables('WAFBackEndPoolConvert'),variables('_CONSTANT_ASE_IP_SHIFT'))]",
+        "WAFBackEndPoolLastOctet": "[string(variables('WAFBackEndPoolAdd'))]",
+        "backendIpAddress1": "[concat(variables('WAFBackEndPoolSplit')[0],'.',variables('WAFBackEndPoolSplit')[1],'.',variables('WAFBackEndPoolSplit')[2],'.',variables('WAFBackEndPoolLastOctet'))]",
+        "applicationGatewaySize":"WAF_Medium",
+        "applicationGatewayCapacity":2,
+        "wafMode": "Prevention",
+        "wafRuleSetType": "OWASP",
+        "wafRuleSetVersion": "3.0"
     },
     "resources": [
     {
@@ -205,6 +242,12 @@
                 "networkSecurityGroup": {
                   "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'AllowRDP-NSG')]"
                 }
+            },
+            {
+              "name": "[parameters('wafSubnetName')]",
+              "properties": {
+                "addressPrefix": "[parameters('wafSubnetPrefix')]"          
+              }
             }
         ]    
       }        
@@ -370,6 +413,138 @@
                 "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('bastionNicName'))]"
               }
             ]
+          }
+        }
+      },
+      {
+        "comments": "Public IP for App Gateway",
+        "apiVersion": "2017-06-01",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[variables('wafPublicIPName')]",
+        "location": "[resourceGroup().location]",  
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic"
+        }
+      },
+      {
+        "comments": "App Gateway",
+        "apiVersion": "2017-03-01",
+        "name": "[parameters('appgwyName')]",
+        "type": "Microsoft.Network/applicationGateways",
+        "location": "[resourceGroup().location]", 
+        "dependsOn": [
+          "[concat('Microsoft.Network/publicIPAddresses/', variables('wafPublicIPName'))]"
+        ],
+        "properties": {
+          "sku": {
+            "name": "[variables('applicationGatewaySize')]",
+            "tier": "WAF",
+            "capacity": "[variables('applicationGatewayCapacity')]"
+          },
+          "gatewayIPConfigurations": [
+            {
+              "name": "appGatewayIpConfig",
+              "properties": {
+                "subnet": {
+                  "id": "[variables('wafSubnetRef')]"
+                }
+              }
+            }
+          ],
+          "frontendIPConfigurations": [
+            {
+              "name": "appGatewayFrontendIP",
+              "properties": {
+                "PublicIPAddress": {
+                  "id": "[variables('wafPublicIPRef')]"
+                }
+              }
+            }
+          ],
+          "frontendPorts": [
+            {
+              "name": "appGatewayFrontendPort",
+              "properties": {
+                "Port": 80
+              }
+            }
+          ],
+          "probes": [
+            {
+              "properties": {
+                "protocol": "Http",
+                "host": "[concat(parameters('webAppName'),'.',parameters('dnsSuffix'))]",
+                "path": "/",
+                "interval": "30",
+                "timeout": "120",
+                "unhealthyThreshold": "8"
+              },
+              "name": "agProbe1"
+            }
+          ],
+          "backendAddressPools": [
+            {
+              "name": "appGatewayBackendPool",
+              "properties": {
+                "BackendAddresses": [
+                  {
+                    "IpAddress": "[variables('backendIpAddress1')]"
+                  }
+                ]
+              }
+            }
+          ],
+          "backendHttpSettingsCollection": [
+            {
+              "name": "appGatewayBackendHttpSettings",
+              "properties": {
+                "Port": 80,
+                "Protocol": "Http",
+                "CookieBasedAffinity": "Disabled",
+                "probe": {
+                  "id": "[concat(variables('applicationGatewayID'), '/probes/agProbe1')]"
+                }
+              }
+            }
+          ],
+          "httpListeners": [
+            {
+              "name": "appGatewayHttpListener",
+              "properties": {
+                "FrontendIPConfiguration": {
+                  "Id": "[concat(variables('applicationGatewayID'), '/frontendIPConfigurations/appGatewayFrontendIP')]"
+                },
+                "FrontendPort": {
+                  "Id": "[concat(variables('applicationGatewayID'), '/frontendPorts/appGatewayFrontendPort')]"
+                },
+                "Protocol": "Http",
+                "SslCertificate": null
+              }
+            }
+          ],
+          "requestRoutingRules": [
+            {
+              "Name": "rule1",
+              "properties": {
+                "RuleType": "Basic",
+                "httpListener": {
+                  "id": "[concat(variables('applicationGatewayID'), '/httpListeners/appGatewayHttpListener')]"
+                },
+                "backendAddressPool": {
+                  "id": "[concat(variables('applicationGatewayID'), '/backendAddressPools/appGatewayBackendPool')]"
+                },
+                "backendHttpSettings": {
+                  "id": "[concat(variables('applicationGatewayID'), '/backendHttpSettingsCollection/appGatewayBackendHttpSettings')]"
+                }
+              }
+            }
+          ],
+          "webApplicationFirewallConfiguration": {
+            "enabled": "true",
+            "firewallMode": "[variables('wafMode')]",
+            "ruleSetType": "[variables('wafRuleSetType')]",
+            "ruleSetVersion": "[variables('wafRuleSetVersion')]",
+            "disabledRuleGroups": [ ]
           }
         }
       }
