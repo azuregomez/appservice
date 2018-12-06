@@ -8,7 +8,7 @@ This template deploys:
 <li>A Web Application in the ASP with code deployed from a github repo
 <li>Bastion VM for RDP in the DMZ Subnet
 </ul>
-<img ref="https://storagegomez.blob.core.windows.net/public/images/ASE-AG.jpg"\>
+<img src="https://storagegomez.blob.core.windows.net/public/images/ASE-AG.jpg"\>
 The ASE IP is in the backend pool of App Gateway.
 No VNet DNS needed since the requests come from outside.
 To make it work you need to change DNS so it points to the App Gateway public IP.
