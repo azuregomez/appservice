@@ -1,4 +1,4 @@
-$rgname = "ASE01-RG"
+$rgname = "ASEdemo-RG"
 $location = "North Central US"
 $templateuri = "https://raw.githubusercontent.com/azuregomez/appservice/master/azuredeploy.json"
 $templateparamuri = "https://raw.githubusercontent.com/azuregomez/appservice/master/azuredeploy.parameters.json"

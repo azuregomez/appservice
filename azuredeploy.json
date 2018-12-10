@@ -2,16 +2,22 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "resourceNamePrefix":{
+            "type": "string",
+            "metadata": {
+              "description": "Prefix for naming resources"
+          }
+        },
         "aseName": {
             "type": "string",
-            "defaultValue": "[concat(variables('domainSplit')[0],'-ASE')]",
+            "defaultValue": "[concat(parameters('resourceNamePrefix'),'-ASE')]",
             "metadata": {
                 "description": "Name of the App Service Environment"
             }
         },       
         "vnetName": {
             "type": "string",
-            "defaultValue": "[concat(variables('domainSplit')[0],'-VNET')]",
+            "defaultValue": "[concat(parameters('resourceNamePrefix'),'-VNET')]",
             "metadata": {
               "description": "Name of VNET"
             }
@@ -87,7 +93,7 @@
         },
         "appServicePlanName": {
             "type": "string",
-            "defaultValue": "[concat(variables('domainSplit')[0],'-ASP')]",
+            "defaultValue": "[concat(parameters('resourceNamePrefix'),'-ASP')]",
             "metadata": {
               "description": "The name of the App Service plan to use for hosting the web app."
             }
@@ -133,7 +139,7 @@
         },
         "bastionVmName": {
             "type": "string",
-            "defaultValue": "[concat(variables('domainSplit')[0],'-JMP-VM')]",
+            "defaultValue": "[concat(parameters('resourceNamePrefix'),'-JMP-VM')]",
             "metadata": {
                 "description": "Name for the bastion Virtual Machine."
             }
@@ -154,14 +160,13 @@
         },
         "appgwyName":{
           "type": "string",
-          "defaultValue": "[concat(variables('domainSplit')[0],'-AppGateway')]",
+          "defaultValue": "[concat(parameters('resourceNamePrefix'),'-AppGateway')]",
           "metadata": {
               "description": "App Gateway Name."
           }
         }
     },
-    "variables":{
-        "domainSplit": "[split(parameters('aseDomain'),'.')]",
+    "variables":{        
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
         "bastionVIPName": "[concat(parameters('bastionVmName'),'-VIP')]",
         "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]",
@@ -432,7 +437,7 @@
         "properties": {
           "publicIPAllocationMethod": "Dynamic",
           "dnsSettings": {
-            "domainNameLabel": "[variables('domainSplit')[0]]"
+            "domainNameLabel": "[parameters('resourceNamePrefix')]"
           }
         }
       },
