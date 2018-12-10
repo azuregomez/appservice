@@ -430,7 +430,10 @@
         "name": "[variables('wafPublicIPName')]",
         "location": "[resourceGroup().location]",  
         "properties": {
-          "publicIPAllocationMethod": "Dynamic"
+          "publicIPAllocationMethod": "Dynamic",
+          "dnsSettings": {
+            "domainNameLabel": "[variables('domainSplit')[0]]"
+          }
         }
       },
       {
