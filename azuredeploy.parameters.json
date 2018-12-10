@@ -1,33 +1,15 @@
 {
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json",
     "contentVersion": "1.0.0.0",
-    "parameters": {
-        "aseName": {
-            "value": "LakeviewASE"
-        },
-        "vNetName": {
-            "value": "LakeviewVnet"
-        },       
-        "dnsSuffix": {
-            "value": "lakeview.cloud"
+    "parameters": {           
+        "aseDomain": {
+            "value": "Lakeview.cloud"
         },
         "aseLocation":{
             "value": "North Central US"
         },
         "webAppName": {
             "value": "app01"
-        },
-        "bastionVmName": {
-            "value": "bastionVm01"
-        },
-        "bastionVmUsername": {
-            "value": "azureadmin"
-        },
-        "bastionVmPassword":{
-            "value": "p@ssw0rd1!"
-        },
-        "appgwyName":{
-            "value": "LakeviewAppGateway"
-        }
+        }             
     }
 }
