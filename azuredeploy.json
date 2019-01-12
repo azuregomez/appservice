@@ -71,6 +71,20 @@
               "description": "WAF subnet Address prefix"
             }
         },
+        "cacheSubnetName": {
+          "type": "string",
+          "defaultValue": "CacheSubnet",
+          "metadata": {
+              "description": "Subnet name that will contain App Gateway"
+          }
+        },
+        "cacheSubnetPrefix": {
+            "type": "string",
+            "defaultValue": "10.0.4.0/24",
+            "metadata": {
+              "description": "Redis subnet Address prefix"
+            }
+        },
         "internalLoadBalancingMode": {
             "type": "int",
             "defaultValue": 3,
@@ -259,6 +273,12 @@
               "name": "[parameters('wafSubnetName')]",
               "properties": {
                 "addressPrefix": "[parameters('wafSubnetPrefix')]"          
+              }
+            },
+            {
+              "name": "[parameters('cacheSubnetName')]",
+              "properties": {
+                "addressPrefix": "[parameters('cacheSubnetPrefix')]"          
               }
             }
         ]    
