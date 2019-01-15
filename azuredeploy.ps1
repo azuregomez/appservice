@@ -1,4 +1,4 @@
-$rgname = "ASEdemo-RG"
+$rgname = "SEcurePaaS-RG"
 $location = "North Central US"
 $templateuri = "https://raw.githubusercontent.com/azuregomez/appservice/master/azuredeploy.json"
 $templateparamuri = "https://raw.githubusercontent.com/azuregomez/appservice/master/azuredeploy.parameters.json"

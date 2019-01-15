@@ -151,26 +151,51 @@
               "description": "Repo branch."
             }
         },
-        "bastionVmName": {
+        "vmName": {
             "type": "string",
             "defaultValue": "[concat(parameters('resourceNamePrefix'),'-JMP-VM')]",
             "metadata": {
-                "description": "Name for the bastion Virtual Machine."
+                "description": "Name for the  Virtual Machine."
             }
         },
-        "bastionVmUsername": {
+        "vmUsername": {
             "type": "string",
             "defaultValue": "azureadmin",
             "metadata": {
                 "description": "Username for the Virtual Machine."
             }
         },
-        "bastionVmPassword": {
+        "vmPassword": {
             "type": "securestring",
             "defaultValue": "p@ssw0rd1!",
             "metadata": {
             "description": "Password for the Virtual Machine."
             }
+        },
+        "vmVisualStudioVersion": {
+          "type": "string",
+          "defaultValue": "VS-2017-RC1-Comm-WS2012R2",
+          "allowedValues": [
+            "VS-2013-Comm-VSU5-AzureSDK-295-WS2012R2",
+            "VS-2013-Prem-VSU5-AzureSDK-295-WS2012R2",
+            "VS-2013-Ult-VSU5-AzureSDK-295-WS2012R2",
+            "VS-2015-Comm-AzureSDK-2.9-W10T-Win10-N",
+            "VS-2015-Comm-AzureSDK-2.9-WS2012R2",
+            "VS-2015-Comm-VSU3-AzureSDK-29-Win10-N",
+            "VS-2015-Comm-VSU3-AzureSDK-291-Win10-N",
+            "VS-2015-Comm-VSU3-AzureSDK-291-WS2012R2",
+            "VS-2015-Ent-AzureSDK-2.9-WS2012R2",
+            "VS-2015-Ent-AzureSDK-29-W10T-Win10-N",
+            "VS-2015-Ent-VSU3-AzureSDK-29-Win10-N",
+            "VS-2015-Ent-VSU3-AzureSDK-291-WS2012R2",
+            "VS-2017-RC1-Comm-Win10-N",
+            "VS-2017-RC1-Comm-WS2012R2",
+            "VS-2017-RC1-Ent-Win10-N",
+            "VS-2017-RC1-Ent-WS2012R2"
+          ],
+          "metadata": {
+            "description": "Which version of Visual Studio you would like to deploy"
+          }
         },
         "appgwyName":{
           "type": "string",
@@ -182,8 +207,11 @@
     },
     "variables":{        
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
-        "bastionVIPName": "[concat(parameters('bastionVmName'),'-VIP')]",
-        "bastionNICName": "[concat(parameters('bastionVmName'),'-NIC')]",
+        "vmVIPName": "[concat(parameters('vmName'),'-VIP')]",
+        "vmNICName": "[concat(parameters('vmName'),'-NIC')]",
+        "vmImagePublisher": "MicrosoftVisualStudio",
+        "vmImageOffer": "VisualStudio",
+        "vmSize": "Standard_DS2",
         "wafPublicIPName": "[concat(parameters('appgwyName'),'-VIP')]",
         "wafSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('wafSubnetName'))]",
         "wafPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('wafPublicIPName'))]",
@@ -370,7 +398,7 @@
         "comments": "Bastion VM Public IP",
         "apiVersion": "2016-03-30",
         "type": "Microsoft.Network/publicIPAddresses",
-        "name": "[variables('bastionVIPName')]",
+        "name": "[variables('vmVIPName')]",
         "location": "[resourceGroup().location]",  
         "properties": {
         "publicIPAllocationMethod": "Dynamic"          
@@ -380,10 +408,10 @@
         "comments": "NIC for bastionVM",
         "apiVersion": "2016-03-30",
         "type": "Microsoft.Network/networkInterfaces",
-        "name": "[variables('bastionNicName')]",
+        "name": "[variables('vmNicName')]",
         "location": "[resourceGroup().location]",  
         "dependsOn": [
-          "[resourceId('Microsoft.Network/publicIPAddresses/', variables('bastionVIPName'))]",
+          "[resourceId('Microsoft.Network/publicIPAddresses/', variables('vmVIPName'))]",
           "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
         ],
         "properties": {
@@ -393,7 +421,7 @@
               "properties": {
                 "privateIPAllocationMethod": "Dynamic",
                 "publicIPAddress": {
-                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('bastionVIPName'))]"
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('vmVIPName'))]"
                 },
                 "subnet": {
                   "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets/', parameters('vnetName'), parameters('dmzSubnetName'))]"
@@ -404,28 +432,28 @@
         }
     },
     {
-        "comments": "Bastion VM",
+        "comments": "VM",
         "apiVersion": "2017-03-30",
         "type": "Microsoft.Compute/virtualMachines",
-        "name": "[parameters('bastionVmName')]",
+        "name": "[parameters('vmName')]",
         "location": "[resourceGroup().location]",  
         "dependsOn": [          
-          "[resourceId('Microsoft.Network/networkInterfaces/', variables('bastionNicName'))]"
+          "[resourceId('Microsoft.Network/networkInterfaces/', variables('vmNicName'))]"
         ],
         "properties": {
           "hardwareProfile": {
-            "vmSize": "Standard_A2"
+            "vmSize":  "[variables('vmSize')]"
           },
           "osProfile": {
-            "computerName": "[parameters('bastionVmName')]",
-            "adminUsername": "[parameters('bastionVMUsername')]",
-            "adminPassword": "[parameters('bastionVMPassword')]"
+            "computerName": "[parameters('vmName')]",
+            "adminUsername": "[parameters('VMUsername')]",
+            "adminPassword": "[parameters('VMPassword')]"
           },
           "storageProfile": {
             "imageReference": {
-              "publisher": "MicrosoftWindowsServer",
-              "offer": "WindowsServer",
-              "sku": "2016-Datacenter",
+              "publisher": "[variables('vmImagePublisher')]",
+              "offer": "[variables('vmImageOffer')]",
+              "sku": "[parameters('vmVisualStudioVersion')]",
               "version": "latest"
             },
             "osDisk": {
@@ -442,7 +470,7 @@
           "networkProfile": {
             "networkInterfaces": [
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('bastionNicName'))]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('vmNicName'))]"
               }
             ]
           }
