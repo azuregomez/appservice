@@ -3,7 +3,7 @@
     "contentVersion": "1.0.0.0",
     "parameters": {    
         "resourceNamePrefix":{
-            "value": "Lakeview"
+            "value": "lakeview"
         },
         "aseDomain": {
             "value": "lakeview.cloud"
