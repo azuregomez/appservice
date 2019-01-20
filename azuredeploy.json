@@ -246,7 +246,106 @@
           "metadata": {
             "description": "The static IP address the redis cache should have, for a cache in a virtual network subnet. Requires configuring a virtualNetwork."
           }
+        },
+        "sqlServerName": {
+          "type": "string",
+          "defaultValue":"[concat(parameters('resourceNamePrefix'),'-sqlserver')]",
+          "metadata": {
+            "description": "sql server name."
+          }
+        },
+        "sqlAdministratorLogin": {
+          "type": "string",
+          "defaultValue": "azureadmin",
+          "metadata": {
+              "description": "Username for SQL Admin."
+          }
+      },
+      "sqlAdministratorPassword": {
+          "type": "securestring",
+          "defaultValue": "p@ssw0rd1!",
+          "metadata": {
+          "description": "Password for the SQL."
+          }
+      },
+      "sqlDatabaseName": {
+        "type": "string",
+        "defaultValue":"[concat(parameters('resourceNamePrefix'),'sqldb')]",
+        "metadata": {
+          "description": "sql server db name."
         }
+      },
+      "keyVaultName": {
+        "type": "string",
+        "defaultValue":"[concat(parameters('resourceNamePrefix'),'-keyvault')]",
+        "metadata": {
+          "description": "Name of the Vault"
+        }
+      },
+      "tenantId": {
+        "type": "string",
+        "defaultValue": "[subscription().tenantId]",
+        "metadata": {
+          "description": "Tenant Id of the subscription. Get using Get-AzureRmSubscription cmdlet or Get Subscription API"
+        }
+      },
+      "ADUserObjectID": {
+        "type": "string",
+        "metadata": {
+          "description": "Object Id of the AD user creating this vault. Get using Get-AzureRmADUser or Get-AzureRmADServicePrincipal cmdlets"
+        }
+      },
+      "vaultSkuName": {
+        "type": "string",
+        "defaultValue": "Standard",
+        "allowedValues": [
+          "Standard",
+          "Premium"
+        ],
+        "metadata": {
+          "description": "SKU for the vault"
+        }
+      },
+      "enableVaultForDeployment": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies if the vault is enabled for a VM deployment"
+        }
+      },
+      "enableVaultForDiskEncryption": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies if the azure platform has access to the vault for enabling disk encryption scenarios."
+        }
+      },
+      "enabledForTemplateDeployment": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies whether Azure Resource Manager is permitted to retrieve secrets from the key vault."
+        }
+      },
+      "secretsObject": {
+        "type": "secureObject",
+        "defaultValue": "{}",
+        "metadata": {
+          "description": "all secrets {\"secretName\":\"\",\"secretValue\":\"\"} wrapped in a secure object"
+        }
+      }
     },
     "variables":{        
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
@@ -260,7 +359,9 @@
         "wafPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('wafPublicIPName'))]",
         "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',parameters('appgwyName'))]",
         "_CONSTANT_ASE_IP_SHIFT": 11,
-        "aseSubnetPrefixSplit": "[split(parameters('aseSubnetPrefix'),'/')]",        
+        "aseSubnetPrefixSplit": "[split(parameters('aseSubnetPrefix'),'/')]",       
+        "aseSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('aseSubnetName'))]", 
+        "cacheSubnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('cacheSubnetName'))]", 
         "WebAppSubnetPrefix": "[variables('aseSubnetPrefixSplit')[0]]",
         "WAFBackEndPoolSplit": "[split(variables('WebAppSubnetPrefix'),'.')]",
         "WAFBackEndPoolConvert": "[int(variables('WAFBackEndPoolSplit')[3])]",
@@ -272,7 +373,7 @@
         "wafMode": "Prevention",
         "wafRuleSetType": "OWASP",
         "wafRuleSetVersion": "3.0",
-        "osDiskType":"StandardSSD_LRS"        
+        "osDiskType":"StandardSSD_LRS"       
     },
     "resources": [
     {
@@ -315,7 +416,7 @@
     },
     {
         "comments": "VNet and Subnets",
-        "apiVersion": "2015-06-15",
+        "apiVersion": "2017-06-01",
         "type": "Microsoft.Network/virtualNetworks",
         "name": "[parameters('vnetName')]",
         "location": "[resourcegroup().location]",
@@ -329,17 +430,51 @@
             {
               "name": "[parameters('aseSubnetName')]",
               "properties": {
-                "addressPrefix": "[parameters('aseSubnetPrefix')]"          
+                "addressPrefix": "[parameters('aseSubnetPrefix')]",         
+                "serviceEndpoints": [
+                  {                      
+                      "service": "Microsoft.Sql",
+                      "locations": [
+                        "[resourcegroup().location]"
+                      ]
+                  },
+                  {                      
+                    "service": "Microsoft.Storage",
+                    "locations": [
+                      "[resourcegroup().location]"
+                    ]
+                  },
+                  {                      
+                    "service": "Microsoft.KeyVault",
+                    "locations": [
+                      "[resourcegroup().location]"
+                    ]
+                  }
+                ]
               }
             },
             {
                 "name": "[parameters('dmzSubnetName')]",
                 "properties": {
-                  "addressPrefix": "[parameters('dmzSubnetPrefix')]"            
-                },
-                "networkSecurityGroup": {
-                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'AllowRDP-NSG')]"
-                }
+                  "addressPrefix": "[parameters('dmzSubnetPrefix')]",
+                  "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'AllowRDP-NSG')]"
+                  },
+                  "serviceEndpoints": [
+                    {                        
+                        "service": "Microsoft.Sql",
+                        "locations": [
+                          "[resourcegroup().location]"
+                        ]
+                    },
+                    {                      
+                      "service": "Microsoft.Storage",
+                      "locations": [
+                        "[resourcegroup().location]"
+                      ]
+                    }
+                  ]            
+                }                
             },
             {
               "name": "[parameters('wafSubnetName')]",
@@ -350,7 +485,21 @@
             {
               "name": "[parameters('cacheSubnetName')]",
               "properties": {
-                "addressPrefix": "[parameters('cacheSubnetPrefix')]"          
+                "addressPrefix": "[parameters('cacheSubnetPrefix')]",
+                "serviceEndpoints": [
+                  {                        
+                      "service": "Microsoft.Sql",
+                      "locations": [
+                        "[resourcegroup().location]"
+                      ]
+                  },
+                  {                      
+                    "service": "Microsoft.Storage",
+                    "locations": [
+                      "[resourcegroup().location]"
+                    ]
+                  }
+                ]           
               }
             }
         ]    
@@ -543,7 +692,8 @@
         "type": "Microsoft.Network/applicationGateways",
         "location": "[resourceGroup().location]", 
         "dependsOn": [
-          "[concat('Microsoft.Network/publicIPAddresses/', variables('wafPublicIPName'))]"
+          "[concat('Microsoft.Network/publicIPAddresses/', variables('wafPublicIPName'))]",
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
         ],
         "properties": {
           "sku": {
@@ -668,13 +818,29 @@
           "name": "[parameters('redisstorageAccountType')]"
         },
         "kind": "StorageV2",
-        "properties": {}
+        "properties": {
+          "networkAcls": {
+            "bypass": "None",
+            "virtualNetworkRules": [
+              {
+                "id": "[variables('cacheSubnetRef')]",
+                "action": "Allow"
+              }
+            ],
+            "defaultAction": "Deny"
+          }
+        }
       },
       {
+        "comments": "Redis cache",
         "apiVersion": "2015-08-01",
         "name": "[parameters('redisCacheName')]",
         "type": "Microsoft.Cache/Redis",
         "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[resourceId('Microsoft.Storage/storageAccounts/', parameters('redisStorageAccountName'))]",
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+        ],
         "properties": {
           "enableNonSslPort": "[parameters('enableNonSslPort')]",
           "shardCount": "[parameters('redisShardCount')]",
@@ -702,6 +868,109 @@
             }
           }
         ]
+      },
+      {
+        "name": "[parameters('sqlserverName')]",
+        "type": "Microsoft.Sql/servers",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [          
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+        ],
+        "tags": {
+          "displayName": "SqlServer"
+        },
+        "apiVersion": "2018-06-01-preview",
+        "properties": {
+          "administratorLogin": "[parameters('sqlAdministratorLogin')]",
+          "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
+          "version": "12.0"
+        },
+        "resources": [
+          {
+            "name": "[parameters('sqldatabaseName')]",
+            "type": "databases",
+            "location": "[resourceGroup().location]",
+            "tags": {
+              "displayName": "Database"
+            },
+            "apiVersion": "2018-06-01-preview",
+            "dependsOn": [
+              "[parameters('sqlserverName')]"
+            ],
+            "properties": {
+              "edition": "Basic",
+              "collation": "SQL_Latin1_General_CP1_CI_AS",
+              "maxSizeBytes": "1073741824",
+              "requestedServiceObjectiveName": "Basic"
+            }
+          },
+          {
+            "name": "sqlvnetrule",
+            "type": "virtualNetworkRules",
+            "apiVersion": "2015-05-01-preview",
+            "dependsOn": [
+              "[parameters('sqlserverName')]"
+            ],
+            "properties": {
+              "virtualNetworkSubnetId": "[variables('aseSubnetRef')]",
+              "ignoreMissingVnetServiceEndpoint": false
+            }
+          }
+        ]
+      },
+      {
+        "comments": "Key Vault",
+        "type": "Microsoft.KeyVault/vaults",
+        "name": "[parameters('keyVaultName')]",
+        "apiVersion": "2018-02-14",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [          
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+        ],
+        "properties": {
+          "enabledForDeployment": "[parameters('enableVaultForDeployment')]",
+          "enabledForDiskEncryption": "[parameters('enableVaultForDiskEncryption')]",
+          "enabledForTemplateDeployment": "[parameters('enabledForTemplateDeployment')]",
+          "tenantId": "[parameters('tenantId')]",
+          "accessPolicies": [
+            {
+              "tenantId": "[parameters('tenantId')]",
+              "objectId": "[parameters('ADUserObjectID')]",
+              "permissions": {
+                "keys": ["all"],
+                "secrets": ["all"]
+              }
+            }
+          ],
+          "sku": {
+            "name": "[parameters('vaultSkuName')]",
+            "family": "A"
+          },
+          "networkAcls": {
+            "bypass": "AzureServices",
+            "defaultAction": "Deny",            
+            "virtualNetworkRules": [
+              {
+                "id": "[variables('aseSubnetRef')]"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "Microsoft.KeyVault/vaults/secrets",
+        "name": "[concat(parameters('keyVaultName'), '/', parameters('secretsObject').secrets[copyIndex()].secretName)]",
+        "apiVersion": "2015-06-01",
+        "properties": {
+          "value": "[parameters('secretsObject').secrets[copyIndex()].secretValue]"
+        },
+        "dependsOn": [
+          "[concat('Microsoft.KeyVault/vaults/', parameters('keyVaultName'))]"
+        ],
+        "copy": {
+          "name": "secretsCopy",
+          "count": "[length(parameters('secretsObject').secrets)]"
+        }
       }
     ]
 }

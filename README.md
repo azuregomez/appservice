@@ -9,7 +9,7 @@ This template deploys:
 <li>VisualStudio VM for RDP in the DMZ Subnet
 <li>Redis Cache in Cache Subnet
 </ul>
-<img src="https://storagegomez.blob.core.windows.net/public/images/securepaas.png"\>
+<img src="https://storagegomez.blob.core.windows.net/public/images/securepaas.jpg"\>
 The ASE IP is in the backend pool of App Gateway.
 No VNet DNS needed since the requests come from outside.
 To make it work you need to change DNS so it points to the App Gateway public IP.

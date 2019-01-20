@@ -13,6 +13,19 @@
         },
         "webAppName": {
             "value": "app01"
-        }             
+        },
+        "ADUserObjectID" : {
+            "value": "<your-aad-object-id>"
+        },
+        "secretsObject": {
+            "value": {
+                "secrets": [						
+                    {
+                        "secretName": "cnstring",
+                        "secretValue": "<yoursqldbcnstring>"
+                    }
+                ]
+            }
+        }
     }
 }
