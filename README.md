@@ -1,4 +1,4 @@
-# ILB ASE behind App Gateway, Redis Cache in VNet and Service End Points
+# ILB ASE behind App Gateway, Redis Cache in VNet and Service End Points for SQL Azure DB, Azure Storage and Azure Key Vault
 This template deploys:
 <ul>
 <li>A VNet with 4 subnets: ASE Subnet, WAF Subnet, Cache Subnet DMZ Subnet
