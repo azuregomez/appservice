@@ -1,7 +1,7 @@
 <h3>What can I do to secure intra-application communication so that only your own apps can communicate with each other?</h3>
 <ul>
-<li>ILB App Service Environment is definitely the best way to accomplish this.
-<li>Without an ASE you can use a combination of IP restrictions, taking requests from API Management exclusively.  In API Management you can establish a variety of authentication mechanisms including something as simple as an API Key.
+<li>ILB App Service Environment is definitely the best way to accomplish this. https://docs.microsoft.com/en-us/azure/app-service/environment/create-ilb-ase
+<li>Without an ASE you can use a combination of IP restrictions, taking requests from API Management exclusively.  In API Management you can establish a variety of authentication mechanisms including something as simple as an API Key. https://docs.microsoft.com/en-us/azure/api-management/
 <li>You can reduce the possibility of outside intrusion by using IP restrictions https://docs.microsoft.com/en-us/azure/app-service/app-service-ip-restrictions
 and allow only the outbound IPs of the multitenant app services that you want to allow.  These IPs are not exclusive of your apps and may be used by other app services running within the same “stamp”.
 <li>Managed Service Identities: https://blogs.msdn.microsoft.com/benjaminperkins/2018/06/13/using-managed-service-identity-msi-with-and-azure-app-service-or-an-azure-function/
