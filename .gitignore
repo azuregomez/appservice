@@ -1,3 +1,4 @@
 
 dnsgodaddy.ps1
 azuredeploy.parameters.local.json
+VNetIntegration/azuredeploy.local.ps1
