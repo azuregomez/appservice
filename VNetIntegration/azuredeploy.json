@@ -93,7 +93,7 @@
         },
         "repoURL": {
             "type": "string",
-            "defaultValue":"https://github.com/azuregomez/helloworld",
+            "defaultValue":"https://github.com/azuregomez/PersonDemo.git",
             "metadata": {
               "description": "The repo where code lives."
             }
@@ -104,6 +104,34 @@
             "metadata": {
               "description": "Repo branch."
             }
+        },
+        "sqlServerName": {
+          "type": "string",
+          "defaultValue":"[concat(parameters('resourceNamePrefix'),'-sqlserver')]",
+          "metadata": {
+            "description": "sql server name."
+          }
+        },
+        "sqlAdministratorLogin": {
+          "type": "string",
+          "defaultValue": "azureadmin",
+          "metadata": {
+              "description": "Username for SQL Admin."
+          }
+        },
+        "sqlAdministratorPassword": {
+            "type": "securestring",
+            "defaultValue": "p@ssw0rd1!",
+            "metadata": {
+            "description": "Password for the SQL."
+            }
+        },
+        "sqlDatabaseName": {
+          "type": "string",
+          "defaultValue":"[concat(parameters('resourceNamePrefix'),'sqldb')]",
+          "metadata": {
+            "description": "sql server db name."
+          }
         }
     },
     "variables":{                     
@@ -226,6 +254,87 @@
               }
             }
           ]
+    },
+    {
+      "name": "[parameters('sqlserverName')]",
+      "type": "remove-",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [          
+        "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+      ],
+      "tags": {
+        "displayName": "SqlServer"
+      },
+      "apiVersion": "2018-06-01-preview",
+      "properties": {
+        "administratorLogin": "[parameters('sqlAdministratorLogin')]",
+        "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
+        "version": "12.0"
+      },
+      "resources": [
+        {
+          "type": "firewallrules",
+          "name": "AllowAllAzureIps",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-05-01-preview",
+          "dependsOn": [
+            "[parameters('sqlserverName')]"
+          ],
+          "properties": {
+              "startIpAddress": "0.0.0.0",
+              "endIpAddress": "0.0.0.0"
+          }
+        },
+        {
+          "name": "[parameters('sqldatabaseName')]",
+          "type": "databases",
+          "location": "[resourceGroup().location]",
+          "tags": {
+            "displayName": "Database"
+          },
+          "apiVersion": "2018-06-01-preview",
+          "dependsOn": [
+            "[parameters('sqlserverName')]"
+          ],
+          "properties": {
+            "edition": "Basic",
+            "collation": "SQL_Latin1_General_CP1_CI_AS",
+            "maxSizeBytes": "1073741824",
+            "requestedServiceObjectiveName": "Basic"
+          },
+          "resources": [
+            {
+                "name": "Import",
+                "type": "extensions",
+                "apiVersion": "2014-04-01",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlserverName'), parameters('sqldatabaseName'))]"
+                ],
+                "properties": {
+                    "storageKeyType": "SharedAccessKey",
+                    "storageKey": "?",
+                    "storageUri": "https://storagegomez.blob.core.windows.net/public/sports.bacpac",
+                    "administratorLogin": "[parameters('sqlAdministratorLogin')]",
+                    "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
+                    "operationMode": "Import"
+                }
+            }
+        ]
+        },
+        {
+          "name": "sqlvnetrule",
+          "type": "virtualNetworkRules",
+          "apiVersion": "2015-05-01-preview",
+          "dependsOn": [            
+            "[parameters('sqlserverName')]",
+            "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlserverName'), parameters('sqldatabaseName'))]"
+          ],
+          "properties": {
+            "virtualNetworkSubnetId": "[variables('delegatedSubnetRef')]",
+            "ignoreMissingVnetServiceEndpoint": false
+          }
+        }
+      ]
     }
   ]
 }
