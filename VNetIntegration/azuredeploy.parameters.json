@@ -4,9 +4,6 @@
     "parameters": {    
         "resourceNamePrefix":{
             "value": "<deploymentprefix>"
-        },        
-        "webAppName": {
-            "value": "<yourappname>"
-        }        
+        }              
     }
 }

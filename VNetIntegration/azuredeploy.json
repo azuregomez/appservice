@@ -149,7 +149,7 @@
       "wafPublicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses',variables('wafPublicIPName'))]",
       "wafMode": "Prevention",
       "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',parameters('appgwyName'))]",
-      "applicationGatewaySize":"WAF_Medium",
+      "applicationGatewaySize":"WAF_v2",
       "applicationGatewayCapacity":2
     },
     "resources": [        
@@ -228,16 +228,26 @@
     },
     {
         "comments": "Web App",
-        "apiVersion": "2016-08-01",       
+        "apiVersion": "2018-02-01",      
         "type": "Microsoft.Web/sites",
         "name": "[parameters('webAppName')]",
         "location": "[resourceGroup().location]",       
         "dependsOn": [          
-          "[concat('Microsoft.Web/serverFarms/',parameters('appServicePlanName'))]"
+          "[concat('Microsoft.Web/serverFarms/',parameters('appServicePlanName'))]",
+          "[concat('Microsoft.Network/publicIPAddresses/',variables('wafPublicIPName'))]"                   
         ],
         "properties": {
           "name": "[parameters('webAppName')]",
-          "serverFarmId": "[resourceId('Microsoft.Web/serverFarms',parameters('appServicePlanName'))]"        
+          "serverFarmId": "[resourceId('Microsoft.Web/serverFarms',parameters('appServicePlanName'))]",
+          "siteConfig":{           
+            "ipSecurityRestrictions": [
+              {
+                "ipAddress": "[concat(reference(variables('wafPublicIPName')).ipAddress,'/32')]",               
+                "name": "appgateway",
+                "description": "appgateway"
+              }
+            ]
+          }      
         },
         "resources": [
             {
@@ -250,7 +260,7 @@
               "properties": {
                 "RepoUrl": "[parameters('repoURL')]",
                 "branch": "[parameters('repoBranch')]",
-                "IsManualIntegration": true
+                "IsManualIntegration": true               
               }
             },
             {
@@ -353,12 +363,15 @@
     },
     {
       "comments": "Public IP for App Gateway",
-      "apiVersion": "2017-06-01",
+      "apiVersion": "2017-08-01",
       "type": "Microsoft.Network/publicIPAddresses",
       "name": "[variables('wafPublicIPName')]",
       "location": "[resourceGroup().location]",  
+      "sku":{
+        "name":"Standard"
+      },
       "properties": {
-        "publicIPAllocationMethod": "Dynamic",
+        "publicIPAllocationMethod": "Static",
         "dnsSettings": {
           "domainNameLabel": "[parameters('resourceNamePrefix')]"
         }
@@ -372,12 +385,12 @@
       "location": "[resourceGroup().location]",
       "dependsOn": [
         "[concat('Microsoft.Network/publicIPAddresses/', variables('wafPublicIPName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"        
       ],
       "properties": {
         "sku": {
           "name": "[variables('applicationGatewaySize')]",
-          "tier": "WAF",
+          "tier": "WAF_v2",
           "capacity": "[variables('applicationGatewayCapacity')]"
         },
         "gatewayIPConfigurations": [
