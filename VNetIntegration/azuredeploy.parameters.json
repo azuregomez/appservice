@@ -4,6 +4,9 @@
     "parameters": {    
         "resourceNamePrefix":{
             "value": "<deploymentprefix>"
-        }              
+        },
+        "ADUserObjectID" : {
+            "value": "<Get-AzureRmADUser>"
+        }               
     }
 }

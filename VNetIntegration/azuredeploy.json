@@ -87,7 +87,7 @@
         },
         "webAppName": {
             "type": "string",
-            "defaultValue": "[concat(parameters('resourceNamePrefix'),'web')]",
+            "defaultValue": "[parameters('resourceNamePrefix')]",
             "metadata": {
               "description": "The name of the web app that will be created."
             }
@@ -134,11 +134,63 @@
             "description": "sql server db name."
           }
         },
+        "sqldatabaseBacpacUrl":{
+          "type": "string",
+          "defaultValue": "https://storagegomez.blob.core.windows.net/public/sports.bacpac",
+          "metadata": {
+            "description": "sql server bacpac location"
+          }
+        },
         "appgwyName":{
           "type": "string",
           "defaultValue": "[concat(parameters('resourceNamePrefix'),'-appgwy')]",
           "metadata": {
               "description": "App Gateway Name."
+          }
+        },
+        "keyvaultname":{
+          "type": "string",
+          "defaultValue": "[concat(parameters('resourceNamePrefix'),'-keyvault')]",
+          "metadata": {
+              "description": "Key Vault Name."
+          }
+        },
+        "tenantId": {
+          "type": "string",
+          "defaultValue": "[subscription().tenantId]",
+          "metadata": {
+            "description": "Tenant Id of the subscription. Get using Get-AzureRmSubscription cmdlet or Get Subscription API"
+          }
+        },
+        "ADUserObjectID": {
+          "type": "string",
+          "metadata": {
+            "description": "Object Id of the AD user. Get using Get-AzureRmADUser or Get-AzureRmADServicePrincipal cmdlets"
+          }
+        },
+        "vaultSkuName": {
+          "type": "string",
+          "defaultValue": "Standard",
+          "allowedValues": [
+            "Standard",
+            "Premium"
+          ],
+          "metadata": {
+            "description": "SKU for the vault"
+          }
+        },
+        "cnStringSecretName":{
+          "type": "string",
+          "defaultValue": "dbcnstr",
+          "metadata": {
+            "description": "DB cnstring secret name"
+          }
+        },
+        "secretsObject": {
+          "type": "secureObject",
+          "defaultValue": { "secrets": [ { "secretname":"[parameters('cnStringSecretName')]", "secretvalue":"[concat('Server=tcp:',parameters('sqlServerName'),'.database.windows.net,1433;Initial Catalog=',parameters('sqldatabasename'), ';User ID=', parameters('sqlAdministratorLogin'), ';Password=', parameters('sqlAdministratorPassword'),';')]"}]},
+          "metadata": {
+            "description": "additional secrets {\"secretName\":\"\",\"secretValue\":\"\"} wrapped in a secure object"
           }
         }
     },
@@ -150,7 +202,11 @@
       "wafMode": "Prevention",
       "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',parameters('appgwyName'))]",
       "applicationGatewaySize":"WAF_v2",
-      "applicationGatewayCapacity":2
+      "applicationGatewayCapacity":2,
+      "enableVaultForDeployment": false,
+      "enableVaultForDiskEncryption": false,
+      "enableVaultForTemplateDeployment": false,
+      "cnstrkvref": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyvaultname'),'.vault.azure.net/secrets/', parameters('cnStringSecretName'),'/versiontobereplaced)')]"
     },
     "resources": [        
     {
@@ -236,6 +292,9 @@
           "[concat('Microsoft.Web/serverFarms/',parameters('appServicePlanName'))]",
           "[concat('Microsoft.Network/publicIPAddresses/',variables('wafPublicIPName'))]"                   
         ],
+        "identity": {
+          "type": "SystemAssigned"
+        },
         "properties": {
           "name": "[parameters('webAppName')]",
           "serverFarmId": "[resourceId('Microsoft.Web/serverFarms',parameters('appServicePlanName'))]",
@@ -245,6 +304,12 @@
                 "ipAddress": "[concat(reference(variables('wafPublicIPName')).ipAddress,'/32')]",               
                 "name": "appgateway",
                 "description": "appgateway"
+              }
+            ],
+            "connectionStrings": [
+              {
+                "name": "[parameters('cnStringSecretName')]",
+                "connectionString": "[variables('cnstrkvref')]"
               }
             ]
           }      
@@ -338,7 +403,7 @@
                 "properties": {
                     "storageKeyType": "SharedAccessKey",
                     "storageKey": "?",
-                    "storageUri": "https://storagegomez.blob.core.windows.net/public/sports.bacpac",
+                    "storageUri": "[parameters('sqldatabaseBacpacUrl')]",
                     "administratorLogin": "[parameters('sqlAdministratorLogin')]",
                     "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
                     "operationMode": "Import"
@@ -500,6 +565,53 @@
           "ruleSetVersion": "3.0",
           "disabledRuleGroups": [ ]
         }
+      }
+    },
+    {
+      "comments": "Key Vault",
+      "type": "Microsoft.KeyVault/vaults",
+      "name": "[parameters('keyVaultName')]",
+      "apiVersion": "2018-02-14",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [          
+        "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+      ],
+      "properties": {
+        "enabledForDeployment": "[variables('enableVaultForDeployment')]",
+        "enabledForDiskEncryption": "[variables('enableVaultForDiskEncryption')]",
+        "enabledForTemplateDeployment": "[variables('enableVaultForTemplateDeployment')]",
+        "tenantId": "[parameters('tenantId')]",
+        "accessPolicies": [
+          {
+            "tenantId": "[parameters('tenantId')]",
+            "objectId": "[parameters('ADUserObjectID')]",
+            "permissions": {
+              "keys": ["all"],
+              "secrets": ["all"]
+            }
+          }
+        ],
+        "sku": {
+          "name": "[parameters('vaultSkuName')]",
+          "family": "A"
+        }       
+      }
+    },    
+  
+    {
+      "comments": "AKV secrets - loop",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "name": "[concat(parameters('keyVaultName'), '/', parameters('secretsObject').secrets[copyIndex()].secretName)]",
+      "apiVersion": "2015-06-01",
+      "properties": {
+        "value": "[parameters('secretsObject').secrets[copyIndex()].secretValue]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.KeyVault/vaults/', parameters('keyVaultName'))]"
+      ],
+      "copy": {
+        "name": "secretsCopy",
+        "count": "[length(parameters('secretsObject').secrets)]"
       }
     }
   ]
