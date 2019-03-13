@@ -206,7 +206,7 @@
       "enableVaultForDeployment": false,
       "enableVaultForDiskEncryption": false,
       "enableVaultForTemplateDeployment": false,
-      "cnstrkvref": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyvaultname'),'.vault.azure.net/secrets/', parameters('cnStringSecretName'))]"
+      "cnstrkvref": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyvaultname'),'.vault.azure.net/secrets/', parameters('cnStringSecretName'),')')]"
     },
     "resources": [        
     {
