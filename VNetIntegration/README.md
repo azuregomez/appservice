@@ -14,7 +14,7 @@ This ARM template deploys:
 </ul>
 Release Notes:
 <ul>
-<li>The script azuredeploy.ps1 includes 3 additional steps: <br>a) Remove a temporary SQL firewall rule  <br>b) Allow the Web App MSI to Get KV secrets. c) Add the secret version in CnString AKV Reference. AKV references will not require version when the feature is released as Generally Available.
+<li>The script azuredeploy.ps1 includes 3 additional steps: <br>a) Remove a temporary SQL firewall rule  <br>b) Allow the Web App MSI to Get KV secrets.<br> c) Add the secret version in CnString AKV Reference. AKV references will not require version when the feature is released as Generally Available.
 <li>For the most restrictive security, Azure Key Vault should have VNet restrictions enabled and allow only requests from the Web App delegated Subnet.  However, the Key Vault Service Endpoint does not work with the new VNet Integration - the Key Vault is still getting the request from one of the default Outbound public IPs of App Service.  
 </ul>
 Deployment Instructions:
