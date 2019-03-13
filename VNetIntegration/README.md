@@ -10,7 +10,7 @@ This ARM template deploys:
 <li>Managed Service Identity for Web Application
 <li>Azure Key Vault with SQL DB Connection string as secret
 <li>Allow access to KV secrets from Web App with MSI
-<li>Web App Portal configuration for Connection String using Key Vault Reference in the format: @Microsoft.KeyVault(SecretUri=https://{resourceprefix}-keyvault.vault.azure.net/secrets/dbcnstr/versiontobereplaced). 
+<li>Web App Portal configuration for Connection String using Key Vault Reference in the format: @Microsoft.KeyVault(SecretUri=https://{resourceprefix}-keyvault.vault.azure.net/secrets/dbcnstr). 
 </ul>
 Release Notes:
 <ul>
