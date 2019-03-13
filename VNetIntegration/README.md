@@ -16,7 +16,7 @@ Release Notes:
 <ul>
 <li>The script azuredeploy.ps1 includes 2 additional steps: <br>a) Remove a temporary SQL firewall rule  <br>b) Allow the Web App MSI to Get KV secrets.  
 <li>For the Web App Connection String, the string segment <i>versiontobereplaced</i>" has to be manually updated in the portal.  AKV references will not require version when the feature is released as Generally Available.
-<li>For the most restrictive security, Azure Key Vault should have VNet restrictions enabled and allow only requests from the Web App delegated Subnet.  However, as of 3/12/2019 the Key Vault Service Endpoint does not work with the new VNet Integration - the Key Vault is still getting the request from one of the default Outbound public IPs of App Service.  Once AKV references is GA I expect this will work and will remediate the template accordingly.  
+<li>For the most restrictive security, Azure Key Vault should have VNet restrictions enabled and allow only requests from the Web App delegated Subnet.  However, as of 3/12/2019 the Key Vault Service Endpoint does not work with the new VNet Integration - the Key Vault is still getting the request from one of the default Outbound public IPs of App Service.  
 </ul>
 Deployment Instructions:
 <ol>
