@@ -26,6 +26,15 @@ Write-Host "Adding App MSI to AKV ..."
 $principal = Get-AzADServicePrincipal -displayname $appname
 $objectid = $principal.Id
 Set-AzKeyVaultAccessPolicy -vaultname $vaultname -objectid $objectid -permissionsToSecrets get
+# Update version of secret in App CnString section
+$secretname = "dbcnstr"
+$secret = get-azkeyvaultsecret -vaultname $vaultname -name $secretname
+$secret.version
+$kvref = "@Microsoft.KeyVault(SecretUri=https://" + $vaultname + ".vault.azure.net/secrets/" +  $secretname + "/" + $secret.version + ")"
+$newcnstr = (@{Name=$secretname;Type="SQLAzure";ConnectionString=$kvref})
+$webapp = get-azwebapp  -resourcegroup $rgname -name $appname
+$webapp.SiteConfig.ConnectionStrings.Add($newcnstr)
+set-azwebapp $webapp
 write-host "Deployment Complete"
 
 

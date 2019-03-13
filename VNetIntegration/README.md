@@ -14,7 +14,7 @@ This ARM template deploys:
 </ul>
 Release Notes:
 <ul>
-<li>The script azuredeploy.ps1 includes 2 additional steps: <br>a) Remove a temporary SQL firewall rule  <br>b) Allow the Web App MSI to Get KV secrets.  
+<li>The script azuredeploy.ps1 includes 2 additional steps: <br>a) Remove a temporary SQL firewall rule  <br>b) Allow the Web App MSI to Get KV secrets. c) Includes the secret version in CnString AKV Reference
 <li>For the Web App Connection String, the string segment <i>versiontobereplaced</i>" has to be manually updated in the portal.  AKV references will not require version when the feature is released as Generally Available.
 <li>For the most restrictive security, Azure Key Vault should have VNet restrictions enabled and allow only requests from the Web App delegated Subnet.  However, as of 3/12/2019 the Key Vault Service Endpoint does not work with the new VNet Integration - the Key Vault is still getting the request from one of the default Outbound public IPs of App Service.  
 </ul>
@@ -23,8 +23,6 @@ Deployment Instructions:
 <li>Clone this repo
 <li>Update the parameter file with your Resource Prefix and your AAD Object ID.  This is required so the template can add you as a Key Vault authorized principal. You can get your AAD Object id with the Powershell cmdlet Get-AzureRmADUser
 <li>Run azuredeploy.ps1
-<li>Copy the Key Vault dbcnstr secret version from the portal.
-<li>Paste the secret version to the Web App ConnectionStrings section in the portal replacing just the <i>versiontobereplaced</i> substring.
 <li>Browse to the AppGateway IP or DNS name. The Web App will not respond on azurewebsites.net because the WAF is in front.
 </ol>
 Application Architecture:
